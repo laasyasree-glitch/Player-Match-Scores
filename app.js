@@ -54,16 +54,19 @@ app.get("/players/:playerId", async (req, res) => {
   res.send(convertDbObjectToResponseObject(result));
 });
 
-app.put("/players/:playerId", async (req, res) => {
-  const { playerId } = req.params;
-  console.log(playerId);
-  const { playerName } = req.body;
-  const getAllSQLQuery = `
-  UPDATE player_details  
-  SET PLAYER_NAME='${playerName}'
-  where player_id=${playerId}`;
-  await db.run(getAllSQLQuery);
-  res.send("Player Details Updated");
+app.put("/players/:playerId/", async (request, response) => {
+  const { playerId } = request.params;
+  const { playerName } = request.body;
+  const updatePlayerQuery = `
+  UPDATE
+    player_details
+  SET
+    player_name ='${playerName}'
+  WHERE
+    player_id = ${playerId};`;
+
+  await db.run(updatePlayerQuery);
+  response.send("Player Details Updated");
 });
 
 app.get("/matches/:matchId", async (req, res) => {
@@ -76,23 +79,36 @@ app.get("/matches/:matchId", async (req, res) => {
 app.get("/players/:playerId/matches", async (req, res) => {
   const { playerId } = req.params;
   const getAllSQLQuery = `SELECT match_id,match,year FROM player_match_score NATURAL JOIN match_details  where player_id=${playerId}`;
-  const result = await db.get(getAllSQLQuery);
-  res.send({
-    matchId: result.match_id,
-    match: result.match,
-    year: result.year,
-  });
+  const result = await db.all(getAllSQLQuery);
+  res.send(
+    result.map((eachPlayer) => convertDbObjectToResponseObject2(eachPlayer))
+  );
 });
 
-app.get("/MATCHES/:matchId/players", async (req, res) => {
+app.get("/matches/:matchId/players", async (req, res) => {
   const { matchId } = req.params;
   const getAllSQLQuery = `SELECT player_id, player_name FROM player_match_score NATURAL JOIN player_details  where match_id=${matchId}`;
-  const result = await db.get(getAllSQLQuery);
-  //   res.send({
-  //     playerId: result.player_id,
-  //     playerName: result.player_name,
-  //   });
-  res.send(result);
+  const result = await db.all(getAllSQLQuery);
+  res.send(
+    result.map((eachPlayer) => convertDbObjectToResponseObject(eachPlayer))
+  );
+});
+
+app.get("/players/:playerId/playerScores/", async (request, response) => {
+  const { playerId } = request.params;
+  const getmatchPlayersQuery = `
+    SELECT
+      player_id AS playerId,
+      player_name AS playerName,
+      SUM(score) AS totalScore,
+      SUM(fours) AS totalFours,
+      SUM(sixes) AS totalSixes
+    FROM player_match_score
+      NATURAL JOIN player_details
+    WHERE
+      player_id = ${playerId};`;
+  const playersMatchDetails = await db.get(getmatchPlayersQuery);
+  response.send(playersMatchDetails);
 });
 
 module.exports = app;
