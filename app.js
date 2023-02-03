@@ -54,6 +54,8 @@ app.get("/players/:playerId", async (req, res) => {
   res.send(convertDbObjectToResponseObject(result));
 });
 
+app.use(express.json());
+
 app.put("/players/:playerId/", async (request, response) => {
   const { playerId } = request.params;
   const { playerName } = request.body;
